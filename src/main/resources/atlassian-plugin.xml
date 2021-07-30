@@ -10,17 +10,17 @@
   <!-- add our i18n resource -->
   <resource type="i18n" name="i18n" location="ppt-generator"/>
 
-  <!-- add our web resources -->
-  <web-resource key="ppt-generator-resources" name="ppt-generator Web Resources">
-    <dependency>com.atlassian.auiplugin:ajs</dependency>
-    <resource type="download" name="ppt-generator.js" location="/js/ppt-generator.js"/>
-    <context>jira.view.issue</context>
-  </web-resource>
-
   <!-- Web Items -->
   <web-item key="export-ppt" name="Export PPT" section="jira.issue.tools" weight="200">
     <description>The button to export PPT</description>
     <label key="item.export.ppt.label"/>
-    <link linkId="export-ppt-link">https://google.com</link>
+    <link linkId="export-ppt-link">/rest/pptgen/1.0/generate?issueKey=${issue.key}</link>
   </web-item>
+
+  <!-- REST -->
+  <rest name="REST Controller for PPT Generator App" key="ppt-generator-rest" path="/pptgen"
+    version="1.0">
+    <description key="search-request-resource.description">The Search Request Resource Plugin
+    </description>
+  </rest>
 </atlassian-plugin>
