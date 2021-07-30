@@ -1,0 +1,20 @@
+# Eclipse
+.classpath
+.project
+.settings/
+
+# Intellij
+.idea/
+*.iml
+*.iws
+
+# Mac
+.DS_Store
+
+# Maven
+log/
+target/
+/ip-selenium/src/test/resources/jira-software/jira-software-application-8.0.0.obr
+/ip-selenium/src/test/resources/jira-software/jira-software-application-8.4.0.obr
+
+.scannerwork/

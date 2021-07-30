@@ -1,0 +1,26 @@
+<atlassian-plugin key="${atlassian.plugin.key}" name="${project.name}" plugins-version="2">
+  <plugin-info>
+    <description>${project.description}</description>
+    <version>${project.version}</version>
+    <vendor name="${project.organization.name}" url="${project.organization.url}"/>
+    <param name="plugin-icon">images/pluginIcon.png</param>
+    <param name="plugin-logo">images/pluginLogo.png</param>
+  </plugin-info>
+
+  <!-- add our i18n resource -->
+  <resource type="i18n" name="i18n" location="ppt-generator"/>
+
+  <!-- add our web resources -->
+  <web-resource key="ppt-generator-resources" name="ppt-generator Web Resources">
+    <dependency>com.atlassian.auiplugin:ajs</dependency>
+    <resource type="download" name="ppt-generator.js" location="/js/ppt-generator.js"/>
+    <context>jira.view.issue</context>
+  </web-resource>
+
+  <!-- Web Items -->
+  <web-item key="export-ppt" name="Export PPT" section="jira.issue.tools" weight="200">
+    <description>The button to export PPT</description>
+    <label key="item.export.ppt.label"/>
+    <link linkId="export-ppt-link">https://google.com</link>
+  </web-item>
+</atlassian-plugin>
