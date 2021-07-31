@@ -28,16 +28,26 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   @Override
   public File generatePPT(Issue issue) throws IOException {
+    log.info("Generating PPT for issue [{}]...", issue.getKey());
     InputStream inputStream = Thread.currentThread().getContextClassLoader()
         .getResourceAsStream(TEMPLATE_FILE_NAME);
-    log.warn("Input stream: [{}]", inputStream);
 
-    String dataPath = jiraHome.getHome().getAbsolutePath() + File.separator + "tmp";
-    File file = new File(dataPath + File.separator + "Output.pptx");
-    log.warn("File create with name [{}]", file.getName());
+    if (inputStream == null) {
+      String message = String.format(
+          "Error while generating the PPT for issue [%s]. The PPT template file could not be read.",
+          issue.getKey());
+      throw new IOException(message);
+    }
+
+    String fileName = issue.getKey() + ".pptx";
+
+    String tmpFilePath = jiraHome.getHome().getAbsolutePath()
+        + File.separator + "tmp"
+        + File.separator + fileName;
+    log.info("Creating a temporary file at: [{}]", tmpFilePath);
+    File file = new File(tmpFilePath);
 
     FileUtils.copyInputStreamToFile(inputStream, file);
-
     return file;
   }
 }
