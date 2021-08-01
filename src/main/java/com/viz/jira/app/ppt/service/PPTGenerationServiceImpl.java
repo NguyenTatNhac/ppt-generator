@@ -1,10 +1,12 @@
 package com.viz.jira.app.ppt.service;
 
+import static com.viz.jira.app.ppt.sdo.CustomFieldName.PXT_SUMMARY;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.STATUS_FLAG2;
 
 import com.atlassian.jira.config.util.JiraHome;
 import com.atlassian.jira.issue.CustomFieldManager;
 import com.atlassian.jira.issue.Issue;
+import com.atlassian.jira.issue.RendererManager;
 import com.atlassian.jira.issue.customfields.impl.SelectCFType;
 import com.atlassian.jira.issue.customfields.option.Option;
 import com.atlassian.jira.issue.fields.CustomField;
@@ -33,12 +35,15 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   private final JiraHome jiraHome;
   private final CustomFieldManager customFieldManager;
+  private final RendererManager rendererManager;
 
   @Autowired
   public PPTGenerationServiceImpl(@ComponentImport JiraHome jiraHome,
-      @ComponentImport CustomFieldManager customFieldManager) {
+      @ComponentImport CustomFieldManager customFieldManager,
+      @ComponentImport RendererManager rendererManager) {
     this.jiraHome = jiraHome;
     this.customFieldManager = customFieldManager;
+    this.rendererManager = rendererManager;
   }
 
   @Override
@@ -107,10 +112,48 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       case SlidePlaceholderName.OVERALL_HEALTH:
         writeOverallHealthToThePlaceholder(issue, placeholder);
         break;
+      case SlidePlaceholderName.PXT_SUMMARY:
+        writePxtSummaryToThePlaceholder(issue, placeholder);
+        break;
       default:
         log.warn("The placeholder [{}] is not yet handled. "
             + "Please contact [nguyentatnhac@gmail.com] to get support.", placeholderName);
     }
+  }
+
+  private void writePxtSummaryToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
+    Collection<CustomField> fields = customFieldManager.getCustomFieldObjectsByName(PXT_SUMMARY);
+
+    if (fields.isEmpty()) {
+      log.warn("There is no field with name [{}] in the instance.", PXT_SUMMARY);
+      writeToTextPlaceholder("", placeholder);
+      return;
+    }
+
+    // Inform the users about field with the same name
+    if (fields.size() > 1) {
+      log.warn("Found {} fields with the same name [{}] in the instance. "
+          + "Will select the first field.", fields.size(), STATUS_FLAG2);
+    }
+
+    CustomField pxtSummaryField = (CustomField) fields.toArray()[0];
+    String wikiMarkupValue = getTextCustomFieldValue(pxtSummaryField, issue);
+    String htmlValue = wikiMarkupToHtml(wikiMarkupValue, issue);
+    writeToHtmlPlaceholder(htmlValue, placeholder);
+  }
+
+  private void writeToHtmlPlaceholder(String html, XSLFTextShape placeholder) {
+    writeToTextPlaceholder(html, placeholder);
+  }
+
+  private String wikiMarkupToHtml(String markup, Issue issue) {
+    String rendererType = "atlassian-wiki-renderer";
+    return rendererManager.getRenderedContent(rendererType, markup, issue.getIssueRenderContext());
+  }
+
+  private String getTextCustomFieldValue(CustomField customField, Issue issue) {
+    String value = customField.getValueFromIssue(issue);
+    return value != null ? value : "";
   }
 
   private void writeOverallHealthToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
