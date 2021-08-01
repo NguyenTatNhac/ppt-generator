@@ -137,13 +137,17 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     }
 
     CustomField pxtSummaryField = (CustomField) fields.toArray()[0];
-    String wikiMarkupValue = getTextCustomFieldValue(pxtSummaryField, issue);
-    String htmlValue = wikiMarkupToHtml(wikiMarkupValue, issue);
+    String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
     writeToHtmlPlaceholder(htmlValue, placeholder);
   }
 
   private void writeToHtmlPlaceholder(String html, XSLFTextShape placeholder) {
     writeToTextPlaceholder(html, placeholder);
+  }
+
+  private String exportHtmlValueFromMultiLineTextField(CustomField customField, Issue issue) {
+    String wikiMarkupValue = getTextCustomFieldValue(customField, issue);
+    return wikiMarkupToHtml(wikiMarkupValue, issue);
   }
 
   private String wikiMarkupToHtml(String markup, Issue issue) {
