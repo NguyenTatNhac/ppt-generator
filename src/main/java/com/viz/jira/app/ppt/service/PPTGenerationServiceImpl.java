@@ -19,8 +19,10 @@ import java.io.InputStream;
 import java.util.Collection;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
-import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,14 +38,17 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
   private final JiraHome jiraHome;
   private final CustomFieldManager customFieldManager;
   private final RendererManager rendererManager;
+  private final HtmlToPptService htmlToPptService;
 
   @Autowired
   public PPTGenerationServiceImpl(@ComponentImport JiraHome jiraHome,
       @ComponentImport CustomFieldManager customFieldManager,
-      @ComponentImport RendererManager rendererManager) {
+      @ComponentImport RendererManager rendererManager,
+      HtmlToPptService htmlToPptService) {
     this.jiraHome = jiraHome;
     this.customFieldManager = customFieldManager;
     this.rendererManager = rendererManager;
+    this.htmlToPptService = htmlToPptService;
   }
 
   @Override
@@ -138,11 +143,9 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
     CustomField pxtSummaryField = (CustomField) fields.toArray()[0];
     String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
-    writeToHtmlPlaceholder(htmlValue, placeholder);
-  }
-
-  private void writeToHtmlPlaceholder(String html, XSLFTextShape placeholder) {
-    writeToTextPlaceholder(html, placeholder);
+    Document doc = Jsoup.parse(htmlValue);
+    Element body = doc.body();
+    htmlToPptService.writePxtSummary(body, placeholder);
   }
 
   private String exportHtmlValueFromMultiLineTextField(CustomField customField, Issue issue) {
@@ -218,8 +221,6 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
   }
 
   private void writeToTextPlaceholder(String text, XSLFTextShape placeholder) {
-    placeholder.clearText();
-    XSLFTextRun textRune = placeholder.addNewTextParagraph().addNewTextRun();
-    textRune.setText(text);
+    placeholder.setText(text);
   }
 }
