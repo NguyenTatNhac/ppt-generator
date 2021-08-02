@@ -6,6 +6,8 @@ import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,13 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
   @Override
   public void writePxtSummary(Document document, XSLFTextShape placeholder) {
     log.info("Writing HTML from field [PXT Summary] to the PPT slide.");
+    log.debug("HTML content to be writing:\n{}", document);
+    writeHtmlToTextShape(document, placeholder);
+  }
+
+  @Override
+  public void writeCommentBlock(Document document, XSLFTextShape placeholder) {
+    log.info("Writing HTML from field [Comment Block] to the PPT slide.");
     log.debug("HTML content to be writing:\n{}", document);
     writeHtmlToTextShape(document, placeholder);
   }
@@ -51,11 +60,38 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
     }
   }
 
-  private void writeParagraph(Element element, XSLFTextShape textShape) {
-    String paragraphText = element.text();
-    XSLFTextRun textRun = textShape.addNewTextParagraph().addNewTextRun();
-    textRun.setBold(true);
-    textRun.setText(paragraphText);
+  private void writeParagraph(Element pElement, XSLFTextShape textShape) {
+    XSLFTextParagraph paragraph = textShape.addNewTextParagraph();
+    for (Node pNode : pElement.childNodes()) {
+      writeNodeToParagraph(pNode, paragraph);
+    }
+  }
+
+  private void writeNodeToParagraph(Node pNode, XSLFTextParagraph paragraph) {
+    if (pNode instanceof TextNode) {
+      writeTextNodeToParagraph((TextNode) pNode, paragraph);
+    } else if (pNode instanceof Element) {
+      writeParagraphElementToParagraph((Element) pNode, paragraph);
+    }
+  }
+
+  private void writeParagraphElementToParagraph(Element element, XSLFTextParagraph paragraph) {
+    // This element can be a <b> or <i>. We only handle the <b> for now and assume it always <b>
+    XSLFTextRun textRun = paragraph.addNewTextRun();
+    textRun.setText(element.text());
+
+    if (element.tagName().equals("b")) {
+      textRun.setBold(true);
+    }
+
+    if (element.tagName().equals("i") || element.tagName().equals("em")) {
+      textRun.setItalic(true);
+    }
+  }
+
+  private void writeTextNodeToParagraph(TextNode textNode, XSLFTextParagraph paragraph) {
+    XSLFTextRun textRun = paragraph.addNewTextRun();
+    textRun.setText(textNode.text());
   }
 
   private void writeBulletList(Element ul, XSLFTextShape placeholder) {

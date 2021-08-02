@@ -1,5 +1,6 @@
 package com.viz.jira.app.ppt.service;
 
+import static com.viz.jira.app.ppt.sdo.CustomFieldName.COMMENT_BLOCK;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.CONTACT;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.CTA;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.PXT_SUMMARY;
@@ -133,9 +134,22 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       case SlidePlaceholderName.INTERNAL_OWNER:
         writeInternalOwnerToThePlaceholder(issue, placeholder);
         break;
+      case SlidePlaceholderName.STATUS_UPDATE:
+        writeStatusUpdateToThePlaceholder(issue, placeholder);
+        break;
       default:
         log.warn("The placeholder [{}] is not yet handled. "
             + "Please contact [nguyentatnhac@gmail.com] to get support.", placeholderName);
+    }
+  }
+
+  private void writeStatusUpdateToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
+    /* "Comment Block" in Jira to "Status Update and Issues/Risks" in slide */
+    CustomField commentBlockField = getFirstCustomFieldByName(COMMENT_BLOCK);
+    if (commentBlockField != null) {
+      String htmlValue = exportHtmlValueFromMultiLineTextField(commentBlockField, issue);
+      Document document = Jsoup.parse(htmlValue);
+      htmlToPptService.writeCommentBlock(document, placeholder);
     }
   }
 

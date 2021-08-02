@@ -10,6 +10,7 @@ public class SlidePlaceholderName {
   public static final String PXT_SUMMARY = "PXT Summary Placeholder";
   public static final String EXTERNAL_OWNER = "External Owner Placeholder";
   public static final String INTERNAL_OWNER = "Internal Owner Placeholder";
+  public static final String STATUS_UPDATE = "Status Update Placeholder";
 
   private SlidePlaceholderName() {
     // Util class

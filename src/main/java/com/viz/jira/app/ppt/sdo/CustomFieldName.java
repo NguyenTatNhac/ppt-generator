@@ -7,6 +7,7 @@ public class CustomFieldName {
   public static final String CONTACT = "Contact";
   public static final String CTA = "CTA";
   public static final String SW_LEAD = "SW Lead";
+  public static final String COMMENT_BLOCK = "Comment Block";
 
   private CustomFieldName() {
     // Util class

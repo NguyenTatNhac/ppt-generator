@@ -6,4 +6,6 @@ import org.jsoup.nodes.Document;
 public interface HtmlToPptService {
 
   void writePxtSummary(Document document, XSLFTextShape placeholder);
+
+  void writeCommentBlock(Document document, XSLFTextShape placeholder);
 }
