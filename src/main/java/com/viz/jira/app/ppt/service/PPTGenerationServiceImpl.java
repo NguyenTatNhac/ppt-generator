@@ -30,7 +30,6 @@ import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -187,9 +186,8 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     CustomField pxtSummaryField = getFirstCustomFieldByName(PXT_SUMMARY);
     if (pxtSummaryField != null) {
       String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
-      Document doc = Jsoup.parse(htmlValue);
-      Element body = doc.body();
-      htmlToPptService.writePxtSummary(body, placeholder);
+      Document document = Jsoup.parse(htmlValue);
+      htmlToPptService.writePxtSummary(document, placeholder);
     }
   }
 

@@ -1,9 +1,9 @@
 package com.viz.jira.app.ppt.service;
 
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
-import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Document;
 
 public interface HtmlToPptService {
 
-  void writePxtSummary(Element body, XSLFTextShape placeholder);
+  void writePxtSummary(Document document, XSLFTextShape placeholder);
 }
