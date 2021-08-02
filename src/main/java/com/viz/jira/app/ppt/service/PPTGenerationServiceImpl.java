@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
@@ -144,87 +145,52 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
      * "Internal Owner" in the slide. */
     List<String> names = new ArrayList<>();
 
-    Collection<CustomField> ctaFields = customFieldManager.getCustomFieldObjectsByName(CTA);
-    if (ctaFields.isEmpty()) {
-      warningFieldNotFound(CTA);
-    }
-    // Inform the users about field with the same name
-    if (ctaFields.size() > 1) {
-      warningFieldsWithTheSameName(CTA, ctaFields.size());
-    }
-
-    CustomField ctaField = (CustomField) ctaFields.toArray()[0];
-    String ctaUserName = getUserDisplayNameUserPickerField(ctaField, issue);
-    if (!ctaUserName.isEmpty()) {
-      names.add(ctaUserName);
+    CustomField ctaField = getFirstCustomFieldByName(CTA);
+    if (ctaField != null) {
+      String ctaUserName = getUserDisplayNameUserPickerField(ctaField, issue);
+      if (ctaUserName != null) {
+        names.add(ctaUserName);
+      }
     }
 
-    Collection<CustomField> swLeadFields = customFieldManager.getCustomFieldObjectsByName(SW_LEAD);
-    if (swLeadFields.isEmpty()) {
-      warningFieldNotFound(SW_LEAD);
-    }
-    // Inform the users about field with the same name
-    if (swLeadFields.size() > 1) {
-      warningFieldsWithTheSameName(SW_LEAD, swLeadFields.size());
-    }
-
-    CustomField swLeadField = (CustomField) swLeadFields.toArray()[0];
-    String swLeadUserName = getUserDisplayNameUserPickerField(swLeadField, issue);
-    if (!swLeadUserName.isEmpty()) {
-      names.add(swLeadUserName);
+    CustomField swLeadField = getFirstCustomFieldByName(SW_LEAD);
+    if (swLeadField != null) {
+      String swLeadUserName = getUserDisplayNameUserPickerField(swLeadField, issue);
+      if (swLeadUserName != null) {
+        names.add(swLeadUserName);
+      }
     }
 
-    String outputValue = String.join(", ", names);
-    writeToTextPlaceholder(outputValue, placeholder);
+    String internalOwnerNames = String.join(", ", names);
+    writeToTextPlaceholder(internalOwnerNames, placeholder);
   }
 
   private void writeExternalOwnerToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
     /* According to the requirement: The "Contact" value in Jira will be written to "External Owner"
      * in the slide. */
-    Collection<CustomField> fields = customFieldManager.getCustomFieldObjectsByName(CONTACT);
-
-    if (fields.isEmpty()) {
-      warningFieldNotFound(CONTACT);
-      writeToTextPlaceholder("", placeholder);
-      return;
-    }
+    CustomField contactField = getFirstCustomFieldByName(CONTACT);
 
     // Inform the users about field with the same name
-    if (fields.size() > 1) {
-      warningFieldsWithTheSameName(CONTACT, fields.size());
+    if (contactField != null) {
+      String userName = getUserDisplayNameUserPickerField(contactField, issue);
+      writeToTextPlaceholder(userName, placeholder);
     }
-
-    CustomField contactField = (CustomField) fields.toArray()[0];
-    String userName = getUserDisplayNameUserPickerField(contactField, issue);
-    writeToTextPlaceholder(userName, placeholder);
   }
 
   private String getUserDisplayNameUserPickerField(CustomField customField, Issue issue) {
     UserCFType cfType = (UserCFType) customField.getCustomFieldType();
     ApplicationUser user = cfType.getValueFromIssue(customField, issue);
-    return user != null ? user.getDisplayName() : "";
+    return user != null ? user.getDisplayName() : null;
   }
 
   private void writePxtSummaryToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    Collection<CustomField> fields = customFieldManager.getCustomFieldObjectsByName(PXT_SUMMARY);
-
-    if (fields.isEmpty()) {
-      warningFieldNotFound(PXT_SUMMARY);
-      writeToTextPlaceholder("", placeholder);
-      return;
+    CustomField pxtSummaryField = getFirstCustomFieldByName(PXT_SUMMARY);
+    if (pxtSummaryField != null) {
+      String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
+      Document doc = Jsoup.parse(htmlValue);
+      Element body = doc.body();
+      htmlToPptService.writePxtSummary(body, placeholder);
     }
-
-    // Inform the users about field with the same name
-    if (fields.size() > 1) {
-      log.warn("Found {} fields with the same name [{}] in the instance. "
-          + "Will select the first field.", fields.size(), STATUS_FLAG2);
-    }
-
-    CustomField pxtSummaryField = (CustomField) fields.toArray()[0];
-    String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
-    Document doc = Jsoup.parse(htmlValue);
-    Element body = doc.body();
-    htmlToPptService.writePxtSummary(body, placeholder);
   }
 
   private String exportHtmlValueFromMultiLineTextField(CustomField customField, Issue issue) {
@@ -245,32 +211,11 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
   private void writeOverallHealthToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
     /* According to the requirement: The "Status-Flag2" value in Jira will be written to "Overall
      * Health" in the slide. */
-    Collection<CustomField> fields = customFieldManager.getCustomFieldObjectsByName(STATUS_FLAG2);
-
-    if (fields.isEmpty()) {
-      warningFieldNotFound(STATUS_FLAG2);
-      writeToTextPlaceholder("", placeholder);
-      return;
+    CustomField statusFlag2Field = getFirstCustomFieldByName(STATUS_FLAG2);
+    if (statusFlag2Field != null) {
+      String statusFlag2Value = getSingleSelectValue(statusFlag2Field, issue);
+      writeToTextPlaceholder(statusFlag2Value, placeholder);
     }
-
-    // Inform the users about field with the same name
-    if (fields.size() > 1) {
-      log.warn("Found {} fields with the same name [{}] in the instance. Will select the first "
-          + "field to write to \"Overall Health\".", fields.size(), STATUS_FLAG2);
-    }
-
-    CustomField statusFlag2Field = (CustomField) fields.toArray()[0];
-    String statusFlag2Value = getSingleSelectValue(statusFlag2Field, issue);
-    writeToTextPlaceholder(statusFlag2Value, placeholder);
-  }
-
-  private void warningFieldsWithTheSameName(String fieldName, int quantity) {
-    log.warn("Found {} fields with the same name [{}] in the instance. Selecting the first one.",
-        quantity, fieldName);
-  }
-
-  private void warningFieldNotFound(String fieldName) {
-    log.warn("There is no field with name [{}] in the instance.", fieldName);
   }
 
   /**
@@ -308,6 +253,25 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
   }
 
   private void writeToTextPlaceholder(String text, XSLFTextShape placeholder) {
-    placeholder.setText(text);
+    String textToSet = text != null ? text : "";
+    placeholder.setText(textToSet);
+  }
+
+  @Nullable
+  private CustomField getFirstCustomFieldByName(String fieldName) {
+    Collection<CustomField> fields = customFieldManager.getCustomFieldObjectsByName(fieldName);
+
+    if (fields.isEmpty()) {
+      log.warn("There is no field with name [{}] in the instance.", fieldName);
+      return null;
+    }
+
+    // Inform the users about field with the same name
+    if (fields.size() > 1) {
+      log.warn("Found {} fields with the same name [{}] in the instance. "
+          + "Will select the first field.", fields.size(), fieldName);
+    }
+
+    return (CustomField) fields.toArray()[0];
   }
 }
