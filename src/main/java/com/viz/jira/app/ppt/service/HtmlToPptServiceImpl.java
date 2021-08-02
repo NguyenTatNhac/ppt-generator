@@ -1,6 +1,7 @@
 package com.viz.jira.app.ppt.service;
 
 import org.apache.poi.sl.usermodel.TextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
@@ -8,6 +9,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,23 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
     log.info("Writing HTML from field [Comment Block] to the PPT slide.");
     log.debug("HTML content to be writing:\n{}", document);
     writeHtmlToTextShape(document, placeholder);
+  }
+
+  @Override
+  public void writeMilestonesBlock(Document document, XSLFTable table) {
+    log.debug("Milestones HTML content to be writing:\n{}", document);
+    Elements tables = document.body().getElementsByTag("table");
+
+    if (tables.isEmpty()) {
+      log.warn("There is no milestones table found.");
+    } else {
+      Element htmlTable = tables.first();
+      writeMilestonesTableToPPT(htmlTable, table);
+    }
+  }
+
+  private void writeMilestonesTableToPPT(Element htmlTable, XSLFTable table) {
+    // TODO: Write table
   }
 
   private void writeHtmlToTextShape(Document document, XSLFTextShape textShape) {

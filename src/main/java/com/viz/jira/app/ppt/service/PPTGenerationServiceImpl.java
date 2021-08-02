@@ -3,6 +3,7 @@ package com.viz.jira.app.ppt.service;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.COMMENT_BLOCK;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.CONTACT;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.CTA;
+import static com.viz.jira.app.ppt.sdo.CustomFieldName.MILESTONES;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.PXT_SUMMARY;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.STATUS_FLAG2;
 import static com.viz.jira.app.ppt.sdo.CustomFieldName.SW_LEAD;
@@ -27,7 +28,10 @@ import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFAutoShape;
+import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -77,9 +81,9 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     /* The Template contains one slide already (The PPT is created by me, so I know it) */
     XSLFSlide slide = ppt.getSlides().get(0);
 
-    XSLFTextShape[] placeholders = slide.getPlaceholders();
-    for (XSLFTextShape placeholder : placeholders) {
-      writeIssueDataToThePlaceholder(issue, placeholder);
+    List<XSLFShape> shapes = slide.getShapes();
+    for (XSLFShape shape : shapes) {
+      writeIssueDataToShape(issue, shape);
     }
 
     String tmpFilePath = getTempFilePath(issue);
@@ -94,6 +98,16 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
     // Get and return the tmp file after writing
     return new File(tmpFilePath);
+  }
+
+  private void writeIssueDataToShape(Issue issue, XSLFShape shape) {
+    // Safe here can be XSLFAutoShape (Placeholder) or XSLFTable (Milestones table)
+    if (shape instanceof XSLFAutoShape) {
+      writeIssueDataToThePlaceholder(issue, (XSLFAutoShape) shape);
+    } else if (shape instanceof XSLFTable) {
+      // Currently, the only Table in the slide is using for Milestones
+      writeMilestonesToTheTable(issue, (XSLFTable) shape);
+    }
   }
 
   private String getTempFilePath(Issue issue) {
@@ -140,6 +154,16 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       default:
         log.warn("The placeholder [{}] is not yet handled. "
             + "Please contact [nguyentatnhac@gmail.com] to get support.", placeholderName);
+    }
+  }
+
+  private void writeMilestonesToTheTable(Issue issue, XSLFTable table) {
+    /* "Milestones" in Jira to "Timeline/Milestones" in slide */
+    CustomField milestonesField = getFirstCustomFieldByName(MILESTONES);
+    if (milestonesField != null) {
+      String htmlValue = exportHtmlValueFromMultiLineTextField(milestonesField, issue);
+      Document document = Jsoup.parse(htmlValue);
+      htmlToPptService.writeMilestonesBlock(document, table);
     }
   }
 
