@@ -4,11 +4,8 @@ import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTableCell;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
-import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.nodes.Node;
-import org.jsoup.nodes.TextNode;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,55 +33,8 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
   }
 
   @Override
-  public void writeCommentBlock(Document document, XSLFTextShape placeholder) {
-    log.info("Writing HTML from field [Comment Block] to the PPT slide.");
-    log.debug("HTML content to be writing:\n{}", document);
-  }
-
-  @Override
   public void writeMilestonesBlock(Document document, XSLFTable table) {
     log.debug("Milestones HTML content to be writing:\n{}", document);
-    Elements tables = document.body().getElementsByTag("table");
-
-    if (tables.isEmpty()) {
-      log.warn("There is no milestones table found.");
-    } else {
-      Element htmlTable = tables.first();
-    }
-  }
-
-  private void writeParagraphToTableCell(Element pElement, XSLFTextShape textShape) {
-    XSLFTextParagraph paragraph = textShape.addNewTextParagraph();
-    for (Node pNode : pElement.childNodes()) {
-      writeNodeToParagraph(pNode, paragraph);
-    }
-  }
-
-  private void writeNodeToParagraph(Node pNode, XSLFTextParagraph paragraph) {
-    if (pNode instanceof TextNode) {
-      writeTextNodeToParagraph((TextNode) pNode, paragraph);
-    } else if (pNode instanceof Element) {
-      writeParagraphElementToParagraph((Element) pNode, paragraph);
-    }
-  }
-
-  private void writeParagraphElementToParagraph(Element element, XSLFTextParagraph paragraph) {
-    // This element can be a <b> or <i>. We only handle the <b> for now and assume it always <b>
-    XSLFTextRun textRun = paragraph.addNewTextRun();
-    textRun.setText(element.text());
-
-    if (element.tagName().equals("b")) {
-      textRun.setBold(true);
-    }
-
-    if (element.tagName().equals("i") || element.tagName().equals("em")) {
-      textRun.setItalic(true);
-    }
-  }
-
-  private void writeTextNodeToParagraph(TextNode textNode, XSLFTextParagraph paragraph) {
-    XSLFTextRun textRun = paragraph.addNewTextRun();
-    textRun.setText(textNode.text());
   }
 
   private void writeBulletListToTableCell(Element ul, XSLFTableCell tableCell) {
@@ -107,5 +57,16 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
         tableCell.appendText(li.text(), true);
       }
     }
+  }
+
+  private void writeParagraphToTableCell(Element pElement, XSLFTableCell tableCell) {
+    setTextKeepFormat(pElement.text(), tableCell);
+  }
+
+  private void setTextKeepFormat(String text, XSLFTableCell tableCell) {
+    // Assume the cell has only one paragraph, the paragraph has only one text run
+    XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
+    XSLFTextRun textRun = paragraph.getTextRuns().get(0);
+    textRun.setText(text);
   }
 }

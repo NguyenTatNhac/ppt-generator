@@ -35,7 +35,6 @@ import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTableCell;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
-import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -149,6 +148,63 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   private void writeLeftTable(Issue issue, XSLFTable table) {
     writePxtSummaryToTable(issue, table);
+    writeExternalOwner(issue, table);
+    writeInternalOwner(issue, table);
+    writeStatusUpdate(issue, table);
+  }
+
+  private void writeStatusUpdate(Issue issue, XSLFTable table) {
+    /* "Comment Block" in Jira to "Status Update and Issues/Risks" in slide */
+    CustomField commentBlockField = getFirstCustomFieldByName(COMMENT_BLOCK);
+    XSLFTableCell commentBlockCell = table.getCell(11, 0);
+    if (commentBlockField != null) {
+      String htmlValue = exportHtmlValueFromMultiLineTextField(commentBlockField, issue);
+      Document document = Jsoup.parse(htmlValue);
+      Element body = document.body();
+
+      // Assume the "Comment Block" contain only a normal paragraph
+      Element commentBlock = body.child(0);
+      htmlToPptService.writeHtmlToTableCell(commentBlock, commentBlockCell);
+    } else {
+      commentBlockCell.clearText();
+    }
+  }
+
+  private void writeInternalOwner(Issue issue, XSLFTable table) {
+    /* The "CTA" and "SW Lead" in Jira will be written to "Internal Owner" in the slide. */
+    List<String> names = new ArrayList<>();
+
+    CustomField ctaField = getFirstCustomFieldByName(CTA);
+    if (ctaField != null) {
+      String ctaUserName = getUserDisplayNameUserPickerField(ctaField, issue);
+      if (ctaUserName != null) {
+        names.add(ctaUserName);
+      }
+    }
+
+    CustomField swLeadField = getFirstCustomFieldByName(SW_LEAD);
+    if (swLeadField != null) {
+      String swLeadUserName = getUserDisplayNameUserPickerField(swLeadField, issue);
+      if (swLeadUserName != null) {
+        names.add(swLeadUserName);
+      }
+    }
+
+    String internalOwnerNames = String.join(", ", names);
+    XSLFTableCell internalOwnerCell = table.getCell(9, 1);
+    setTextKeepFormat(internalOwnerNames, internalOwnerCell);
+  }
+
+  private void writeExternalOwner(Issue issue, XSLFTable table) {
+    /* The "Contact" value in Jira will be written to "External Owner" in the slide. */
+    XSLFTableCell externalOwnerCell = table.getCell(9, 0);
+    CustomField contactField = getFirstCustomFieldByName(CONTACT);
+    if (contactField != null) {
+      String userName = getUserDisplayNameUserPickerField(contactField, issue);
+      setTextKeepFormat(userName, externalOwnerCell);
+    } else {
+      externalOwnerCell.clearText();
+    }
   }
 
   private void writePxtSummaryToTable(Issue issue, XSLFTable table) {
@@ -187,53 +243,6 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       String htmlValue = exportHtmlValueFromMultiLineTextField(milestonesField, issue);
       Document document = Jsoup.parse(htmlValue);
       htmlToPptService.writeMilestonesBlock(document, table);
-    }
-  }
-
-  private void writeStatusUpdateToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    /* "Comment Block" in Jira to "Status Update and Issues/Risks" in slide */
-    CustomField commentBlockField = getFirstCustomFieldByName(COMMENT_BLOCK);
-    if (commentBlockField != null) {
-      String htmlValue = exportHtmlValueFromMultiLineTextField(commentBlockField, issue);
-      Document document = Jsoup.parse(htmlValue);
-      htmlToPptService.writeCommentBlock(document, placeholder);
-    }
-  }
-
-  private void writeInternalOwnerToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    /* According to the requirement: The "CTA" and "SW Lead" values in Jira will be written to
-     * "Internal Owner" in the slide. */
-    List<String> names = new ArrayList<>();
-
-    CustomField ctaField = getFirstCustomFieldByName(CTA);
-    if (ctaField != null) {
-      String ctaUserName = getUserDisplayNameUserPickerField(ctaField, issue);
-      if (ctaUserName != null) {
-        names.add(ctaUserName);
-      }
-    }
-
-    CustomField swLeadField = getFirstCustomFieldByName(SW_LEAD);
-    if (swLeadField != null) {
-      String swLeadUserName = getUserDisplayNameUserPickerField(swLeadField, issue);
-      if (swLeadUserName != null) {
-        names.add(swLeadUserName);
-      }
-    }
-
-    String internalOwnerNames = String.join(", ", names);
-    writeToTextPlaceholder(internalOwnerNames, placeholder);
-  }
-
-  private void writeExternalOwnerToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    /* According to the requirement: The "Contact" value in Jira will be written to "External Owner"
-     * in the slide. */
-    CustomField contactField = getFirstCustomFieldByName(CONTACT);
-
-    // Inform the users about field with the same name
-    if (contactField != null) {
-      String userName = getUserDisplayNameUserPickerField(contactField, issue);
-      writeToTextPlaceholder(userName, placeholder);
     }
   }
 
@@ -312,11 +321,6 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
     XSLFTextRun textRun = paragraph.getTextRuns().get(0);
     textRun.setText(text);
-  }
-
-  private void writeToTextPlaceholder(String text, XSLFTextShape placeholder) {
-    String textToSet = text != null ? text : "";
-    placeholder.setText(textToSet);
   }
 
   @Nullable
