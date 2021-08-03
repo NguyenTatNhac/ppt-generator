@@ -1,7 +1,7 @@
 package com.viz.jira.app.ppt.service;
 
-import org.apache.poi.sl.usermodel.TextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTable;
+import org.apache.poi.xslf.usermodel.XSLFTableCell;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
@@ -17,24 +17,28 @@ import org.springframework.stereotype.Service;
 @Service
 public class HtmlToPptServiceImpl implements HtmlToPptService {
 
-  private static final Double LIST_LEFT_MARGIN = 10D;
-  private static final Double LIST_INDENT = -10D;
-  private static final Double LIST_SPACE_BEFORE = 27.52; // 27.52 / 6.88 = 4.03 pt
-
   private static final Logger log = LoggerFactory.getLogger(HtmlToPptServiceImpl.class);
 
   @Override
-  public void writePxtSummary(Document document, XSLFTextShape placeholder) {
-    log.info("Writing HTML from field [PXT Summary] to the PPT slide.");
-    log.debug("HTML content to be writing:\n{}", document);
-    writeHtmlToTextShape(document, placeholder);
+  public void writeHtmlToTableCell(Element element, XSLFTableCell tableCell) {
+    log.debug("HTML content to be writing:\n{}", element);
+    String tagName = element.tagName();
+    switch (tagName) {
+      case "p":
+        writeParagraphToTableCell(element, tableCell);
+        break;
+      case "ul":
+        writeBulletListToTableCell(element, tableCell);
+        break;
+      default:
+        log.warn("The HTML tag name [{}] is not yet handled to write in to PPT.", tagName);
+    }
   }
 
   @Override
   public void writeCommentBlock(Document document, XSLFTextShape placeholder) {
     log.info("Writing HTML from field [Comment Block] to the PPT slide.");
     log.debug("HTML content to be writing:\n{}", document);
-    writeHtmlToTextShape(document, placeholder);
   }
 
   @Override
@@ -46,40 +50,10 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
       log.warn("There is no milestones table found.");
     } else {
       Element htmlTable = tables.first();
-      writeMilestonesTableToPPT(htmlTable, table);
     }
   }
 
-  private void writeMilestonesTableToPPT(Element htmlTable, XSLFTable table) {
-    // TODO: Write table
-  }
-
-  private void writeHtmlToTextShape(Document document, XSLFTextShape textShape) {
-    // Clear everything in the Text Shape before writing new content
-    textShape.clearText();
-
-    // We only write body to the Text Shape
-    Element body = document.body();
-    for (Element child : body.children()) {
-      writeHtmlToTextShape(child, textShape);
-    }
-  }
-
-  private void writeHtmlToTextShape(Element element, XSLFTextShape textShape) {
-    String tagName = element.tagName();
-    switch (tagName) {
-      case "p":
-        writeParagraph(element, textShape);
-        break;
-      case "ul":
-        writeBulletList(element, textShape);
-        break;
-      default:
-        log.warn("The HTML tag name [{}] is not yet handled to write in to PPT.", tagName);
-    }
-  }
-
-  private void writeParagraph(Element pElement, XSLFTextShape textShape) {
+  private void writeParagraphToTableCell(Element pElement, XSLFTextShape textShape) {
     XSLFTextParagraph paragraph = textShape.addNewTextParagraph();
     for (Node pNode : pElement.childNodes()) {
       writeNodeToParagraph(pNode, paragraph);
@@ -113,18 +87,25 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
     textRun.setText(textNode.text());
   }
 
-  private void writeBulletList(Element ul, XSLFTextShape placeholder) {
-    for (Element li : ul.children()) {
-      XSLFTextParagraph list = placeholder.addNewTextParagraph();
-      list.setBullet(true);
-      list.setIndentLevel(0);
-      list.setLeftMargin(LIST_LEFT_MARGIN);
-      list.setIndent(LIST_INDENT);
-      list.setSpaceBefore(LIST_SPACE_BEFORE);
-      list.setFontAlign(TextParagraph.FontAlign.TOP);
-      list.setTextAlign(TextParagraph.TextAlign.LEFT);
-      XSLFTextRun textRun = list.addNewTextRun();
-      textRun.setText(li.text());
+  private void writeBulletListToTableCell(Element ul, XSLFTableCell tableCell) {
+    /* Each cell has already one bullet point with Format set. We edit text of the first point, and
+     * append new point to the cell, in order to keep the format (Font, Font Size,...) */
+    Elements children = ul.children();
+
+    if (children.isEmpty()) {
+      tableCell.clearText();
+      return;
+    }
+
+    for (int i = 0; i < children.size(); i++) {
+      Element li = children.get(i);
+      if (i == 0) {
+        XSLFTextParagraph firstPoint = tableCell.getTextParagraphs().get(0);
+        XSLFTextRun firstTextRun = firstPoint.getTextRuns().get(0);
+        firstTextRun.setText(li.text());
+      } else {
+        tableCell.appendText(li.text(), true);
+      }
     }
   }
 }

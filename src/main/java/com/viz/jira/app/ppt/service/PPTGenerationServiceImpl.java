@@ -38,6 +38,7 @@ import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -146,8 +147,37 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   }
 
-  private void writeLeftTable(Issue issue, XSLFTable tableShape) {
+  private void writeLeftTable(Issue issue, XSLFTable table) {
+    writePxtSummaryToTable(issue, table);
+  }
 
+  private void writePxtSummaryToTable(Issue issue, XSLFTable table) {
+    CustomField pxtSummaryField = getFirstCustomFieldByName(PXT_SUMMARY);
+    if (pxtSummaryField != null) {
+      String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
+      Document document = Jsoup.parse(htmlValue);
+      Element pxtBody = document.body();
+
+      // Write description
+      XSLFTableCell descriptionCell = table.getCell(1, 0);
+      Element description = pxtBody.child(1);
+      htmlToPptService.writeHtmlToTableCell(description, descriptionCell);
+
+      // Write product intercepts
+      XSLFTableCell productInterceptsCell = table.getCell(3, 0);
+      Element productIntercepts = pxtBody.child(3);
+      htmlToPptService.writeHtmlToTableCell(productIntercepts, productInterceptsCell);
+
+      // Write Success Metric
+      XSLFTableCell successMetricCell = table.getCell(5, 0);
+      Element successMetric = pxtBody.child(5);
+      htmlToPptService.writeHtmlToTableCell(successMetric, successMetricCell);
+
+      // Write Key Deliverables
+      XSLFTableCell keyDeliverablesCell = table.getCell(7, 0);
+      Element keyDeliverables = pxtBody.child(7);
+      htmlToPptService.writeHtmlToTableCell(keyDeliverables, keyDeliverablesCell);
+    }
   }
 
   private void writeMilestonesToTheTable(Issue issue, XSLFTable table) {
@@ -211,15 +241,6 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     UserCFType cfType = (UserCFType) customField.getCustomFieldType();
     ApplicationUser user = cfType.getValueFromIssue(customField, issue);
     return user != null ? user.getDisplayName() : null;
-  }
-
-  private void writePxtSummaryToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    CustomField pxtSummaryField = getFirstCustomFieldByName(PXT_SUMMARY);
-    if (pxtSummaryField != null) {
-      String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
-      Document document = Jsoup.parse(htmlValue);
-      htmlToPptService.writePxtSummary(document, placeholder);
-    }
   }
 
   private String exportHtmlValueFromMultiLineTextField(CustomField customField, Issue issue) {
