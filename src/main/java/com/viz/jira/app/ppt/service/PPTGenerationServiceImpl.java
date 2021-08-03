@@ -18,20 +18,23 @@ import com.atlassian.jira.issue.customfields.option.Option;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
-import com.viz.jira.app.ppt.sdo.SlidePlaceholderName;
+import com.viz.jira.app.ppt.sdo.ShapeName;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
-import org.apache.poi.xslf.usermodel.XSLFAutoShape;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTable;
+import org.apache.poi.xslf.usermodel.XSLFTableCell;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -101,12 +104,12 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
   }
 
   private void writeIssueDataToShape(Issue issue, XSLFShape shape) {
-    // Safe here can be XSLFAutoShape (Placeholder) or XSLFTable (Milestones table)
-    if (shape instanceof XSLFAutoShape) {
-      writeIssueDataToThePlaceholder(issue, (XSLFAutoShape) shape);
-    } else if (shape instanceof XSLFTable) {
-      // Currently, the only Table in the slide is using for Milestones
-      writeMilestonesToTheTable(issue, (XSLFTable) shape);
+    String shapeName = shape.getShapeName();
+    // We have 3 XSLFTable in the Template (Top Table, Left Table and Right Table)
+    if (shape instanceof XSLFTable) {
+      writeIssueDataToTheTable(issue, (XSLFTable) shape);
+    } else {
+      log.warn("Found an unknown shape [{}] in the template", shapeName);
     }
   }
 
@@ -121,40 +124,30 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     return issue.getKey() + ".pptx";
   }
 
-  private void writeIssueDataToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    String placeholderName = placeholder.getShapeName();
-    switch (placeholderName) {
-      case SlidePlaceholderName.KEY:
-        writeIssueKeyToThePlaceholder(issue, placeholder);
+  private void writeIssueDataToTheTable(Issue issue, XSLFTable table) {
+    String tableName = table.getShapeName();
+    switch (tableName) {
+      case ShapeName.TOP_TABLE:
+        writeTopTable(issue, table);
         break;
-      case SlidePlaceholderName.SUMMARY:
-        writeSummaryToThePlaceholder(issue, placeholder);
+      case ShapeName.LEFT_TABLE:
+        writeLeftTable(issue, table);
         break;
-      case SlidePlaceholderName.DATE:
-        writeDateToThePlaceholder(issue, placeholder);
-        break;
-      case SlidePlaceholderName.PHASE:
-        writePhaseToThePlaceholder(issue, placeholder);
-        break;
-      case SlidePlaceholderName.OVERALL_HEALTH:
-        writeOverallHealthToThePlaceholder(issue, placeholder);
-        break;
-      case SlidePlaceholderName.PXT_SUMMARY:
-        writePxtSummaryToThePlaceholder(issue, placeholder);
-        break;
-      case SlidePlaceholderName.EXTERNAL_OWNER:
-        writeExternalOwnerToThePlaceholder(issue, placeholder);
-        break;
-      case SlidePlaceholderName.INTERNAL_OWNER:
-        writeInternalOwnerToThePlaceholder(issue, placeholder);
-        break;
-      case SlidePlaceholderName.STATUS_UPDATE:
-        writeStatusUpdateToThePlaceholder(issue, placeholder);
+      case ShapeName.RIGHT_TABLE:
+        writeRightTable(issue, table);
         break;
       default:
-        log.warn("The placeholder [{}] is not yet handled. "
-            + "Please contact [nguyentatnhac@gmail.com] to get support.", placeholderName);
+        log.warn("The shape with name [{}] is not yet handled. "
+            + "Please contact [nguyentatnhac@gmail.com] to get support.", tableName);
     }
+  }
+
+  private void writeRightTable(Issue issue, XSLFTable tableShape) {
+
+  }
+
+  private void writeLeftTable(Issue issue, XSLFTable tableShape) {
+
   }
 
   private void writeMilestonesToTheTable(Issue issue, XSLFTable table) {
@@ -244,14 +237,13 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     return value != null ? value : "";
   }
 
-  private void writeOverallHealthToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    /* According to the requirement: The "Status-Flag2" value in Jira will be written to "Overall
-     * Health" in the slide. */
+  private String getOverallHealth(Issue issue) {
+    /* The "Status-Flag2" value in Jira will be written to "Overall Health" in the slide. */
     CustomField statusFlag2Field = getFirstCustomFieldByName(STATUS_FLAG2);
     if (statusFlag2Field != null) {
-      String statusFlag2Value = getSingleSelectValue(statusFlag2Field, issue);
-      writeToTextPlaceholder(statusFlag2Value, placeholder);
+      return getSingleSelectValue(statusFlag2Field, issue);
     }
+    return "";
   }
 
   /**
@@ -268,24 +260,37 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     return option != null ? option.getValue() : "";
   }
 
-  private void writePhaseToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    /* According to the requirement: The issue status will be written to "Phase" in the slide. */
-    String status = issue.getStatus().getName();
-    writeToTextPlaceholder(status, placeholder);
+  private void writeTopTable(Issue issue, XSLFTable table) {
+    // Edit issue key
+    XSLFTableCell issueKeyCell = table.getCell(0, 0);
+    setTextKeepFormat(issue.getKey(), issueKeyCell);
+
+    // Edit issue summary
+    XSLFTableCell summaryCell = table.getCell(1, 0);
+    setTextKeepFormat(issue.getSummary(), summaryCell);
+
+    // Edit Date (Updated)
+    XSLFTableCell dateCell = table.getCell(1, 1);
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    String updated = issue.getUpdated().toLocalDateTime().format(formatter);
+    setTextKeepFormat(updated, dateCell);
+
+    // Edit Phase (Status)
+    XSLFTableCell phaseCell = table.getCell(1, 2);
+    String status = issue.getStatus().getName().toUpperCase();
+    setTextKeepFormat(status, phaseCell);
+
+    // Edit Overall Health (Status-Flag2)
+    XSLFTableCell overallHealthCell = table.getCell(1, 3);
+    String overallHealth = getOverallHealth(issue);
+    setTextKeepFormat(overallHealth, overallHealthCell);
   }
 
-  private void writeDateToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    /* According to the requirement: The issue updated date will be written to "Date" in the slide. */
-    String updatedTime = issue.getUpdated().toString();
-    writeToTextPlaceholder(updatedTime, placeholder);
-  }
-
-  private void writeSummaryToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    writeToTextPlaceholder(issue.getSummary(), placeholder);
-  }
-
-  private void writeIssueKeyToThePlaceholder(Issue issue, XSLFTextShape placeholder) {
-    writeToTextPlaceholder(issue.getKey(), placeholder);
+  private void setTextKeepFormat(String text, XSLFTableCell tableCell) {
+    // Assume the cell has only one paragraph, the paragraph has only one text run
+    XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
+    XSLFTextRun textRun = paragraph.getTextRuns().get(0);
+    textRun.setText(text);
   }
 
   private void writeToTextPlaceholder(String text, XSLFTextShape placeholder) {
