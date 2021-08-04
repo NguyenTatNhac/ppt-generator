@@ -1,10 +1,8 @@
 package com.viz.jira.app.ppt.service;
 
-import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.apache.poi.xslf.usermodel.XSLFTableCell;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
-import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
@@ -28,13 +26,9 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
         writeBulletListToTableCell(element, tableCell);
         break;
       default:
+        tableCell.clearText();
         log.warn("The HTML tag name [{}] is not yet handled to write in to PPT.", tagName);
     }
-  }
-
-  @Override
-  public void writeMilestonesBlock(Document document, XSLFTable table) {
-    log.debug("Milestones HTML content to be writing:\n{}", document);
   }
 
   private void writeBulletListToTableCell(Element ul, XSLFTableCell tableCell) {

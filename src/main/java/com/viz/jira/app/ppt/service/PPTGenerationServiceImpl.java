@@ -38,6 +38,7 @@ import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -142,8 +143,60 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     }
   }
 
-  private void writeRightTable(Issue issue, XSLFTable tableShape) {
+  private void writeRightTable(Issue issue, XSLFTable table) {
+    /* "Milestones" in Jira to "Timeline/Milestones" in slide */
+    CustomField milestonesField = getFirstCustomFieldByName(MILESTONES);
+    if (milestonesField != null) {
+      String htmlValue = exportHtmlValueFromMultiLineTextField(milestonesField, issue);
+      Document document = Jsoup.parse(htmlValue);
+      Elements tables = document.body().getElementsByTag("table");
 
+      if (!tables.isEmpty()) {
+        Element htmlTable = tables.first();
+        writeMilestonesTable(htmlTable, table);
+      } else {
+        log.warn("There is no milestones table found.");
+      }
+    }
+  }
+
+  private void writeMilestonesTable(Element htmlTable, XSLFTable table) {
+    /* The XSLFTable template has only 17 rows to write data (plus 1 for header). If the customer
+     * input more than 17 milestones, the rest will be ignored. In that case, the developers need
+     * to edit the PPT template. */
+    Element tableBody = htmlTable.getElementsByTag("tbody").get(0);
+    Elements htmlRows = tableBody.children();
+
+    // Log a warning if the Milestones table has more than 17 milestones (plus 1 header)
+    if (htmlRows.size() > 18) {
+      log.warn("The Milestone table has more than 17 item, and it exceed the number of item the "
+          + "PPT template can hold. The exceeded items will be ignored.");
+    }
+
+    if (!htmlRows.isEmpty()) {
+      /* Start writing from the second row, we don't need the header */
+      for (int i = 1; i < htmlRows.size(); i++) {
+        /* We only write the first 17 rows to the PPT, since the Template has only 17 placeholders */
+        if (i <= 17) {
+          Element htmlRow = htmlRows.get(i);
+          /* Write only the 1st and the 2nd column to PPT table */
+          // The first column
+          String plannedMilestone = htmlRow.child(0).text();
+          XSLFTableCell timelinePPTCell = table.getCell(i, 0);
+          setTextKeepFormat(plannedMilestone, timelinePPTCell);
+
+          // The second column
+          String actualMilestone = htmlRow.child(1).text();
+          XSLFTableCell milestonesPPTCell = table.getCell(i, 1);
+          setTextKeepFormat(actualMilestone, milestonesPPTCell);
+        } else {
+          /* The number placeholders in the PPT template is not enough, we have to stop here. */
+          break;
+        }
+      }
+    } else {
+      log.warn("The table Milestones has no row.");
+    }
   }
 
   private void writeLeftTable(Issue issue, XSLFTable table) {
@@ -233,16 +286,6 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       XSLFTableCell keyDeliverablesCell = table.getCell(7, 0);
       Element keyDeliverables = pxtBody.child(7);
       htmlToPptService.writeHtmlToTableCell(keyDeliverables, keyDeliverablesCell);
-    }
-  }
-
-  private void writeMilestonesToTheTable(Issue issue, XSLFTable table) {
-    /* "Milestones" in Jira to "Timeline/Milestones" in slide */
-    CustomField milestonesField = getFirstCustomFieldByName(MILESTONES);
-    if (milestonesField != null) {
-      String htmlValue = exportHtmlValueFromMultiLineTextField(milestonesField, issue);
-      Document document = Jsoup.parse(htmlValue);
-      htmlToPptService.writeMilestonesBlock(document, table);
     }
   }
 
