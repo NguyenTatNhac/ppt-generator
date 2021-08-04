@@ -9,6 +9,7 @@ import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
 import com.viz.jira.app.ppt.service.PPTGenerationService;
 import java.io.File;
+import java.nio.file.Files;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -16,6 +17,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.StreamingOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,7 +74,13 @@ public class PPTGenerationController {
     try {
       File file = pptGenerationService.generatePPT(issue);
 
-      ResponseBuilder response = Response.ok(file);
+      ResponseBuilder response = Response.ok((StreamingOutput) output -> {
+        Files.copy(file.toPath(), output);
+        boolean deleted = Files.deleteIfExists(file.toPath());
+        if (deleted) {
+          log.info("Temporary file has been deleted after download. [{}]", file.getName());
+        }
+      });
       String contentDispositionHeaderValue = "attachment; filename=\"" + file.getName() + "\"";
       response.header(CONTENT_DISPOSITION_HEADER, contentDispositionHeaderValue);
 
