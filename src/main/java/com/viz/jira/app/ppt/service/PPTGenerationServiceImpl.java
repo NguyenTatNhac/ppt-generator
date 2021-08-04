@@ -110,7 +110,8 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     if (shape instanceof XSLFTable) {
       writeIssueDataToTheTable(issue, (XSLFTable) shape);
     } else {
-      log.warn("Found an unknown shape [{}] in the template", shapeName);
+      log.warn("Found an unknown shape [{}] in the template. Shape type: [{}]",
+          shapeName, shape.getClass().getName());
     }
   }
 
@@ -127,6 +128,8 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   private void writeIssueDataToTheTable(Issue issue, XSLFTable table) {
     String tableName = table.getShapeName();
+    log.info("Start writing Issue data to the table [{}]", tableName);
+
     switch (tableName) {
       case ShapeName.TOP_TABLE:
         writeTopTable(issue, table);
@@ -138,7 +141,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
         writeRightTable(issue, table);
         break;
       default:
-        log.warn("The shape with name [{}] is not yet handled. "
+        log.warn("The table with name [{}] is not yet handled. "
             + "Please contact [nguyentatnhac@gmail.com] to get support.", tableName);
     }
   }
@@ -149,18 +152,19 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     if (milestonesField != null) {
       String htmlValue = exportHtmlValueFromMultiLineTextField(milestonesField, issue);
       Document document = Jsoup.parse(htmlValue);
+      log.info("{} parsed HTML value:\n{}", MILESTONES, document);
       Elements tables = document.body().getElementsByTag("table");
 
       if (!tables.isEmpty()) {
         Element htmlTable = tables.first();
-        writeMilestonesTable(htmlTable, table);
+        writeMilestonesTable(issue, htmlTable, table);
       } else {
         log.warn("There is no milestones table found.");
       }
     }
   }
 
-  private void writeMilestonesTable(Element htmlTable, XSLFTable table) {
+  private void writeMilestonesTable(Issue issue, Element htmlTable, XSLFTable table) {
     /* The XSLFTable template has only 17 rows to write data (plus 1 for header). If the customer
      * input more than 17 milestones, the rest will be ignored. In that case, the developers need
      * to edit the PPT template. */
@@ -169,8 +173,9 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
     // Log a warning if the Milestones table has more than 17 milestones (plus 1 header)
     if (htmlRows.size() > 18) {
-      log.warn("The Milestone table has more than 17 item, and it exceed the number of item the "
-          + "PPT template can hold. The exceeded items will be ignored.");
+      log.warn("The Milestone table on issue [{}] has more than 17 item, and it exceed the number "
+              + "of item the PPT template can hold. The exceeded items will be ignored.",
+          issue.getKey());
     }
 
     if (!htmlRows.isEmpty()) {
@@ -195,7 +200,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
         }
       }
     } else {
-      log.warn("The table Milestones has no row.");
+      log.warn("The table Milestones on issue [{}] has no row.", issue.getKey());
     }
   }
 
@@ -213,6 +218,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     if (commentBlockField != null) {
       String htmlValue = exportHtmlValueFromMultiLineTextField(commentBlockField, issue);
       Document document = Jsoup.parse(htmlValue);
+      log.info("{} parsed value:\n{}", COMMENT_BLOCK, document);
       Element body = document.body();
 
       // Assume the "Comment Block" contain only a normal paragraph
@@ -254,6 +260,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     CustomField contactField = getFirstCustomFieldByName(CONTACT);
     if (contactField != null) {
       String userName = getUserDisplayNameUserPickerField(contactField, issue);
+      log.info("[{}] value from issue [{}]:", CONTACT, issue.getKey());
       setTextKeepFormat(userName, externalOwnerCell);
     } else {
       externalOwnerCell.clearText();
@@ -261,10 +268,12 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
   }
 
   private void writePxtSummaryToTable(Issue issue, XSLFTable table) {
+    log.info("Writing [{}] to PPT", PXT_SUMMARY);
     CustomField pxtSummaryField = getFirstCustomFieldByName(PXT_SUMMARY);
     if (pxtSummaryField != null) {
       String htmlValue = exportHtmlValueFromMultiLineTextField(pxtSummaryField, issue);
       Document document = Jsoup.parse(htmlValue);
+      log.info("{} parsed value:\n{}", PXT_SUMMARY, document);
       Element pxtBody = document.body();
 
       // Write description
@@ -335,35 +344,44 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   private void writeTopTable(Issue issue, XSLFTable table) {
     // Edit issue key
+    log.info("Writing Issue Key: [{}]", issue.getKey());
     XSLFTableCell issueKeyCell = table.getCell(0, 0);
     setTextKeepFormat(issue.getKey(), issueKeyCell);
 
     // Edit issue summary
+    log.info("Writing Issue Summary: [{}]", issue.getSummary());
     XSLFTableCell summaryCell = table.getCell(1, 0);
     setTextKeepFormat(issue.getSummary(), summaryCell);
 
     // Edit Date (Updated)
-    XSLFTableCell dateCell = table.getCell(1, 1);
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     String updated = issue.getUpdated().toLocalDateTime().format(formatter);
+    log.info("Writing Issue updated date: [{}]", updated);
+    XSLFTableCell dateCell = table.getCell(1, 1);
     setTextKeepFormat(updated, dateCell);
 
     // Edit Phase (Status)
-    XSLFTableCell phaseCell = table.getCell(1, 2);
     String status = issue.getStatus().getName().toUpperCase();
+    log.info("Writing Issue status: [{}]", status);
+    XSLFTableCell phaseCell = table.getCell(1, 2);
     setTextKeepFormat(status, phaseCell);
 
     // Edit Overall Health (Status-Flag2)
-    XSLFTableCell overallHealthCell = table.getCell(1, 3);
     String overallHealth = getOverallHealth(issue);
+    log.info("Writing Overall Health: [{}]", overallHealth);
+    XSLFTableCell overallHealthCell = table.getCell(1, 3);
     setTextKeepFormat(overallHealth, overallHealthCell);
   }
 
   private void setTextKeepFormat(String text, XSLFTableCell tableCell) {
-    // Assume the cell has only one paragraph, the paragraph has only one text run
-    XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
-    XSLFTextRun textRun = paragraph.getTextRuns().get(0);
-    textRun.setText(text);
+    if (tableCell != null) {
+      // Assume the cell has only one paragraph, the paragraph has only one text run
+      XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
+      XSLFTextRun textRun = paragraph.getTextRuns().get(0);
+      textRun.setText(text);
+    } else {
+      log.error("The Table Cell is null. Could not write data");
+    }
   }
 
   @Nullable

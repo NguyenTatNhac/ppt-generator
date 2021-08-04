@@ -67,7 +67,8 @@ public class PPTGenerationController {
     }
 
     if (hasNoViewIssuePermission(user, issue)) {
-      log.info("User [{}] has no permission to browse issue [{}]", user.getUsername(), issueKey);
+      log.warn("PPT EXPORT WARNING: User [{}] has no permission to browse issue [{}]",
+          user.getUsername(), issueKey);
       return Response.status(Status.FORBIDDEN).build();
     }
 
