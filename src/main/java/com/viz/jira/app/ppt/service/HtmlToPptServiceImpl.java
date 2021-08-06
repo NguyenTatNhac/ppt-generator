@@ -1,8 +1,8 @@
 package com.viz.jira.app.ppt.service;
 
-import org.apache.poi.xslf.usermodel.XSLFTableCell;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
+import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
@@ -15,51 +15,78 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
   private static final Logger log = LoggerFactory.getLogger(HtmlToPptServiceImpl.class);
 
   @Override
-  public void writeHtmlToTableCell(Element element, XSLFTableCell tableCell) {
+  public void writeHtmlToTextShape(Element element, XSLFTextShape textShape) {
     log.debug("HTML content to be writing:\n{}", element);
     String tagName = element.tagName();
     switch (tagName) {
       case "p":
-        writeParagraphToTableCell(element, tableCell);
+        writeParagraphToTextShape(element, textShape);
         break;
       case "ul":
-        writeBulletListToTableCell(element, tableCell);
+        writeBulletListToTextShape(element, textShape);
+        break;
+      case "body":
+      case "div":
+        // If the element is a body or div, it could have multi children.
+        writeDivToTextShape(element, textShape);
         break;
       default:
-        tableCell.clearText();
+        textShape.clearText();
         log.warn("The HTML tag name [{}] is not yet handled to write in to PPT.", tagName);
     }
   }
 
-  private void writeBulletListToTableCell(Element ul, XSLFTableCell tableCell) {
+  private void writeDivToTextShape(Element element, XSLFTextShape textShape) {
+    /* The cell should already have one paragraph with Format set. We edit text of the first
+     * paragraph, and append new paragraph after in order to keep the format. */
+    Elements children = element.children();
+
+    if (children.isEmpty()) {
+      textShape.clearText();
+      return;
+    }
+
+    for (int i = 0; i < children.size(); i++) {
+      Element child = children.get(i);
+      if (i == 0) {
+        XSLFTextParagraph firstParagraph = textShape.getTextParagraphs().get(0);
+        XSLFTextRun firstTextRun = firstParagraph.getTextRuns().get(0);
+        firstTextRun.setText(child.text());
+      } else {
+        textShape.appendText(child.text(), true);
+      }
+    }
+  }
+
+  private void writeBulletListToTextShape(Element ul, XSLFTextShape textShape) {
     /* Each cell has already one bullet point with Format set. We edit text of the first point, and
      * append new point to the cell, in order to keep the format (Font, Font Size,...) */
     Elements children = ul.children();
 
     if (children.isEmpty()) {
-      tableCell.clearText();
+      textShape.clearText();
       return;
     }
 
     for (int i = 0; i < children.size(); i++) {
       Element li = children.get(i);
       if (i == 0) {
-        XSLFTextParagraph firstPoint = tableCell.getTextParagraphs().get(0);
+        XSLFTextParagraph firstPoint = textShape.getTextParagraphs().get(0);
         XSLFTextRun firstTextRun = firstPoint.getTextRuns().get(0);
         firstTextRun.setText(li.text());
       } else {
-        tableCell.appendText(li.text(), true);
+        textShape.appendText(li.text(), true);
       }
     }
   }
 
-  private void writeParagraphToTableCell(Element pElement, XSLFTableCell tableCell) {
-    setTextKeepFormat(pElement.text(), tableCell);
+  private void writeParagraphToTextShape(Element pElement, XSLFTextShape textShape) {
+    setTextKeepFormat(pElement.text(), textShape);
   }
 
-  private void setTextKeepFormat(String text, XSLFTableCell tableCell) {
-    // Assume the cell has only one paragraph, the paragraph has only one text run
-    XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
+  private void setTextKeepFormat(String text, XSLFTextShape textShape) {
+    // Assume the shape has only one paragraph, the paragraph has only one text run
+    XSLFTextParagraph paragraph = textShape.getTextParagraphs().get(0);
     XSLFTextRun textRun = paragraph.getTextRuns().get(0);
     textRun.setText(text);
   }

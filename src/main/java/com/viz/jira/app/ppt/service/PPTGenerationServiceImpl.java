@@ -220,10 +220,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       Document document = Jsoup.parse(htmlValue);
       log.info("{} parsed value:\n{}", COMMENT_BLOCK, document);
       Element body = document.body();
-
-      // Assume the "Comment Block" contain only a normal paragraph
-      Element commentBlock = body.child(0);
-      htmlToPptService.writeHtmlToTableCell(commentBlock, commentBlockCell);
+      htmlToPptService.writeHtmlToTextShape(body, commentBlockCell);
     } else {
       commentBlockCell.clearText();
     }
@@ -279,22 +276,22 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       // Write description
       XSLFTableCell descriptionCell = table.getCell(1, 0);
       Element description = pxtBody.child(1);
-      htmlToPptService.writeHtmlToTableCell(description, descriptionCell);
+      htmlToPptService.writeHtmlToTextShape(description, descriptionCell);
 
       // Write product intercepts
       XSLFTableCell productInterceptsCell = table.getCell(3, 0);
       Element productIntercepts = pxtBody.child(3);
-      htmlToPptService.writeHtmlToTableCell(productIntercepts, productInterceptsCell);
+      htmlToPptService.writeHtmlToTextShape(productIntercepts, productInterceptsCell);
 
       // Write Success Metric
       XSLFTableCell successMetricCell = table.getCell(5, 0);
       Element successMetric = pxtBody.child(5);
-      htmlToPptService.writeHtmlToTableCell(successMetric, successMetricCell);
+      htmlToPptService.writeHtmlToTextShape(successMetric, successMetricCell);
 
       // Write Key Deliverables
       XSLFTableCell keyDeliverablesCell = table.getCell(7, 0);
       Element keyDeliverables = pxtBody.child(7);
-      htmlToPptService.writeHtmlToTableCell(keyDeliverables, keyDeliverablesCell);
+      htmlToPptService.writeHtmlToTextShape(keyDeliverables, keyDeliverablesCell);
     }
   }
 
