@@ -16,77 +16,87 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
 
   @Override
   public void writeHtmlToTextShape(Element element, XSLFTextShape textShape) {
-    log.debug("HTML content to be writing:\n{}", element);
+    /* We expect each TextShape has already one Paragraph with one TextRun. This TextRun has
+     * pre-defined Format (Font, Font Size, Bullet style,...) for reuse. */
+    XSLFTextParagraph firstParagraph = textShape.getTextParagraphs().get(0);
+    writeHtmlToParagraph(element, firstParagraph);
+  }
+
+  private void writeHtmlToParagraph(Element element, XSLFTextParagraph paragraph) {
     String tagName = element.tagName();
     switch (tagName) {
       case "p":
-        writeParagraphToTextShape(element, textShape);
+        writeParagraph(element, paragraph);
         break;
       case "ul":
-        writeBulletListToTextShape(element, textShape);
+        writeBulletList(element, paragraph);
         break;
       case "body":
       case "div":
         // If the element is a body or div, it could have multi children.
-        writeDivToTextShape(element, textShape);
+        writeBodyOrDiv(element, paragraph);
         break;
       default:
-        textShape.clearText();
-        log.warn("The HTML tag name [{}] is not yet handled to write in to PPT.", tagName);
+        paragraph.getTextRuns().clear();
+        log.warn("The HTML tag name [{}] is not yet handled to write into PPT.", tagName);
     }
   }
 
-  private void writeDivToTextShape(Element element, XSLFTextShape textShape) {
-    /* The cell should already have one paragraph with Format set. We edit text of the first
-     * paragraph, and append new paragraph after in order to keep the format. */
+  private void writeBodyOrDiv(Element element, XSLFTextParagraph paragraph) {
     Elements children = element.children();
 
     if (children.isEmpty()) {
-      textShape.clearText();
+      paragraph.getTextRuns().clear();
       return;
     }
 
+    XSLFTextParagraph currentParagraph;
+    XSLFTextParagraph nextParagraph = paragraph;
     for (int i = 0; i < children.size(); i++) {
       Element child = children.get(i);
-      if (i == 0) {
-        XSLFTextParagraph firstParagraph = textShape.getTextParagraphs().get(0);
-        XSLFTextRun firstTextRun = firstParagraph.getTextRuns().get(0);
-        firstTextRun.setText(child.text());
-      } else {
-        textShape.appendText(child.text(), true);
+      currentParagraph = nextParagraph;
+
+      // If this child is not the last one, append a new paragraph to the end
+      if (i < children.size() - 1) {
+        nextParagraph = paragraph.getParentShape()
+            .appendText(" ", true)
+            .getParagraph();
       }
+
+      writeHtmlToParagraph(child, currentParagraph);
     }
   }
 
-  private void writeBulletListToTextShape(Element ul, XSLFTextShape textShape) {
-    /* Each cell has already one bullet point with Format set. We edit text of the first point, and
+  private void writeBulletList(Element ul, XSLFTextParagraph paragraph) {
+    /* Assume that the paragraph has already one bullet point. We edit text of the first point, and
      * append new point to the cell, in order to keep the format (Font, Font Size,...) */
     Elements children = ul.children();
 
     if (children.isEmpty()) {
-      textShape.clearText();
+      // Clear all texts in this paragraph
+      paragraph.getTextRuns().clear();
       return;
     }
 
     for (int i = 0; i < children.size(); i++) {
       Element li = children.get(i);
       if (i == 0) {
-        XSLFTextParagraph firstPoint = textShape.getTextParagraphs().get(0);
-        XSLFTextRun firstTextRun = firstPoint.getTextRuns().get(0);
+        XSLFTextRun firstTextRun = paragraph.getTextRuns().get(0);
         firstTextRun.setText(li.text());
       } else {
-        textShape.appendText(li.text(), true);
+        paragraph.getParentShape().appendText(li.text(), true);
       }
     }
   }
 
-  private void writeParagraphToTextShape(Element pElement, XSLFTextShape textShape) {
-    setTextKeepFormat(pElement.text(), textShape);
+  private void writeParagraph(Element pElement, XSLFTextParagraph paragraph) {
+    /* This paragraph could be pre-defined as the bullet list. Now make it as the normal para. */
+    paragraph.setBullet(false);
+    setTextKeepFormat(pElement.text(), paragraph);
   }
 
-  private void setTextKeepFormat(String text, XSLFTextShape textShape) {
-    // Assume the shape has only one paragraph, the paragraph has only one text run
-    XSLFTextParagraph paragraph = textShape.getTextParagraphs().get(0);
+  private void setTextKeepFormat(String text, XSLFTextParagraph paragraph) {
+    // Assume that the paragraph has only one text run
     XSLFTextRun textRun = paragraph.getTextRuns().get(0);
     textRun.setText(text);
   }

@@ -257,7 +257,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     CustomField contactField = getFirstCustomFieldByName(CONTACT);
     if (contactField != null) {
       String userName = getUserDisplayNameUserPickerField(contactField, issue);
-      log.info("[{}] value from issue [{}]:", CONTACT, issue.getKey());
+      log.info("[{}] value from issue [{}]: [{}]", CONTACT, issue.getKey(), userName);
       setTextKeepFormat(userName, externalOwnerCell);
     } else {
       externalOwnerCell.clearText();
