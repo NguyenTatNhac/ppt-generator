@@ -20,3 +20,9 @@ atlas-clean && atlas-package
 
 A plugin `jar` file will be built in the `target` directory, use this file to install in the Jira
 Production.
+
+## Field Naming Note
+
+This app will get Jira Custom Field by its name. These names can be different between test and
+production instance. You can correct them in the file `com.viz.jira.app.ppt.sdo.CustomFieldName`.
+After the correction, rebuild the app by running `atlas-clean && atlas-package`.
