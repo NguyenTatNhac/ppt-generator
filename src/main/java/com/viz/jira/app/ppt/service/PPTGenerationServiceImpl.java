@@ -141,8 +141,7 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
         writeRightTable(issue, table);
         break;
       default:
-        log.warn("The table with name [{}] is not yet handled. "
-            + "Please contact [nguyentatnhac@gmail.com] to get support.", tableName);
+        log.warn("The table with name [{}] is not yet handled. ", tableName);
     }
   }
 

@@ -6,11 +6,11 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.viz.jira.app</groupId>
   <artifactId>ppt-generator</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
 
   <organization>
-    <name>Ryker Tyler</name>
-    <url>https://www.freelancer.com/u/nguyentatnhac</url>
+    <name>Example</name>
+    <url>https://example.com</url>
   </organization>
 
   <name>PPT Generator</name>
