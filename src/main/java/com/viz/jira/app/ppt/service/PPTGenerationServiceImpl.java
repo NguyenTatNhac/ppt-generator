@@ -16,9 +16,12 @@ import com.atlassian.jira.issue.customfields.impl.SelectCFType;
 import com.atlassian.jira.issue.customfields.impl.UserCFType;
 import com.atlassian.jira.issue.customfields.option.Option;
 import com.atlassian.jira.issue.fields.CustomField;
+import com.atlassian.jira.issue.status.Status;
 import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
 import com.viz.jira.app.ppt.sdo.ShapeName;
+import com.viz.jira.app.ppt.sdo.StatusColor;
+import java.awt.Color;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -357,16 +360,26 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     setTextKeepFormat(updated, dateCell);
 
     // Edit Phase (Status)
-    String status = issue.getStatus().getName().toUpperCase();
-    log.info("Writing Issue status: [{}]", status);
-    XSLFTableCell phaseCell = table.getCell(1, 2);
-    setTextKeepFormat(status, phaseCell);
+    writeEditPhase(issue, table);
 
     // Edit Overall Health (Status-Flag2)
     String overallHealth = getOverallHealth(issue);
     log.info("Writing Overall Health: [{}]", overallHealth);
     XSLFTableCell overallHealthCell = table.getCell(1, 3);
     setTextKeepFormat(overallHealth, overallHealthCell);
+  }
+
+  private void writeEditPhase(Issue issue, XSLFTable table) {
+    Status status = issue.getStatus();
+    String statusName = status.getName().toUpperCase();
+    log.info("Writing Issue status: [{}]", statusName);
+    XSLFTableCell phaseCell = table.getCell(1, 2);
+    setTextKeepFormat(statusName, phaseCell);
+
+    // Set color for the cell based on status color
+    String colorKey = status.getStatusCategory().getKey();
+    Color color = StatusColor.getColor(colorKey);
+    phaseCell.setFillColor(color);
   }
 
   private void setTextKeepFormat(String text, XSLFTableCell tableCell) {
