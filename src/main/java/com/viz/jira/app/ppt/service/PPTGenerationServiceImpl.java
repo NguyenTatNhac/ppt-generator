@@ -19,6 +19,7 @@ import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.issue.status.Status;
 import com.atlassian.jira.user.ApplicationUser;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
+import com.viz.jira.app.ppt.sdo.OverallHealthColor;
 import com.viz.jira.app.ppt.sdo.ShapeName;
 import com.viz.jira.app.ppt.sdo.StatusColor;
 import java.awt.Color;
@@ -363,10 +364,21 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
     writeEditPhase(issue, table);
 
     // Edit Overall Health (Status-Flag2)
+    writeOverallHealth(issue, table);
+  }
+
+  private void writeOverallHealth(Issue issue, XSLFTable table) {
     String overallHealth = getOverallHealth(issue);
     log.info("Writing Overall Health: [{}]", overallHealth);
     XSLFTableCell overallHealthCell = table.getCell(1, 3);
     setTextKeepFormat(overallHealth, overallHealthCell);
+
+    Color color = OverallHealthColor.get(overallHealth);
+    if (color != null) {
+      overallHealthCell.setFillColor(color);
+    } else {
+      log.error("No color matching for Status-Flag2 value [{}]", overallHealth);
+    }
   }
 
   private void writeEditPhase(Issue issue, XSLFTable table) {
