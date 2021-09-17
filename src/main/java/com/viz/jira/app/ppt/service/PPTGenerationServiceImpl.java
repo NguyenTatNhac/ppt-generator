@@ -181,29 +181,25 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
           issue.getKey());
     }
 
-    if (!htmlRows.isEmpty()) {
-      /* Start writing from the second row, we don't need the header */
-      for (int i = 1; i < htmlRows.size(); i++) {
-        /* We only write the first 17 rows to the PPT, since the Template has only 17 placeholders */
-        if (i <= 17) {
-          Element htmlRow = htmlRows.get(i);
-          /* Write only the 1st and the 2nd column to PPT table */
-          // The first column
-          String plannedMilestone = htmlRow.child(0).text();
-          XSLFTableCell timelinePPTCell = table.getCell(i, 0);
-          setTextKeepFormat(plannedMilestone, timelinePPTCell);
-
-          // The second column
-          String actualMilestone = htmlRow.child(1).text();
-          XSLFTableCell milestonesPPTCell = table.getCell(i, 1);
-          setTextKeepFormat(actualMilestone, milestonesPPTCell);
-        } else {
-          /* The number placeholders in the PPT template is not enough, we have to stop here. */
-          break;
-        }
-      }
-    } else {
+    if (htmlRows.isEmpty()) {
       log.warn("The table Milestones on issue [{}] has no row.", issue.getKey());
+      return;
+    }
+
+    /* Start writing from the second row, we don't need the header */
+    for (int rowIndex = 1; rowIndex < htmlRows.size(); rowIndex++) {
+      /* We only write the first 17 rows to the PPT, since the Template has only 17 placeholders */
+      if (rowIndex > 17) {
+        break;
+      }
+
+      Element htmlRow = htmlRows.get(rowIndex);
+      // We have 5 columns in the PPTX table
+      for (int colIndex = 0; colIndex < 5; colIndex++) {
+        String text = htmlRow.child(colIndex).text();
+        XSLFTableCell pptCell = table.getCell(rowIndex, colIndex);
+        setTextKeepFormat(text, pptCell);
+      }
     }
   }
 
