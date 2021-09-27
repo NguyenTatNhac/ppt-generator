@@ -194,12 +194,21 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
       }
 
       Element htmlRow = htmlRows.get(rowIndex);
-      // We have 5 columns in the PPTX table
-      for (int colIndex = 0; colIndex < 5; colIndex++) {
-        String text = htmlRow.child(colIndex).text();
-        XSLFTableCell pptCell = table.getCell(rowIndex, colIndex);
-        setTextKeepFormat(text, pptCell);
-      }
+
+      // The 1st column from Jira -> The 1st column in PPT
+      String planned = htmlRow.child(0).text();
+      XSLFTableCell pptCell = table.getCell(rowIndex, 0);
+      setTextKeepFormat(planned, pptCell);
+
+      // The 3rd column from Jira -> The 2nd column in PPT
+      String status = htmlRow.child(2).text();
+      pptCell = table.getCell(rowIndex, 1);
+      setTextKeepFormat(status, pptCell);
+
+      // The 5th column from Jira -> The 3rd column in PPT
+      String task = htmlRow.child(4).text();
+      pptCell = table.getCell(rowIndex, 2);
+      setTextKeepFormat(task, pptCell);
     }
   }
 
