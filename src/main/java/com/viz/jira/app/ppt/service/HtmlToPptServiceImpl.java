@@ -1,5 +1,6 @@
 package com.viz.jira.app.ppt.service;
 
+import java.util.List;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
@@ -16,9 +17,13 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
 
   @Override
   public void writeHtmlToTextShape(Element element, XSLFTextShape textShape) {
-    /* We expect each TextShape has already one Paragraph with one TextRun. This TextRun has
+    /* We expect each TextShape has already one Paragraph with TextRuns. The TextRuns have
      * pre-defined Format (Font, Font Size, Bullet style,...) for reuse. */
     XSLFTextParagraph firstParagraph = textShape.getTextParagraphs().get(0);
+
+    // Make sure that the paragraph has only one text run before writing data
+    makeSureOnlyOneTextRunInParagraph(firstParagraph);
+
     writeHtmlToParagraph(element, firstParagraph);
   }
 
@@ -99,5 +104,19 @@ public class HtmlToPptServiceImpl implements HtmlToPptService {
     // Assume that the paragraph has only one text run
     XSLFTextRun textRun = paragraph.getTextRuns().get(0);
     textRun.setText(text);
+  }
+
+  /**
+   * Make sure that the paragraph has only one text run by removing others if they are present.
+   *
+   * @param paragraph The paragraph we need to working on
+   */
+  private void makeSureOnlyOneTextRunInParagraph(XSLFTextParagraph paragraph) {
+    List<XSLFTextRun> textRuns = paragraph.getTextRuns();
+
+    /* Remove all other text runs after index 0 (from the first text run) */
+    if (textRuns.size() > 1) {
+      textRuns.subList(1, textRuns.size()).clear();
+    }
   }
 }

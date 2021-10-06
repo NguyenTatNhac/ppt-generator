@@ -401,9 +401,18 @@ public class PPTGenerationServiceImpl implements PPTGenerationService {
 
   private void setTextKeepFormat(String text, XSLFTableCell tableCell) {
     if (tableCell != null) {
-      // Assume the cell has only one paragraph, the paragraph has only one text run
+      // Assume the cell has only one paragraph
       XSLFTextParagraph paragraph = tableCell.getTextParagraphs().get(0);
-      XSLFTextRun textRun = paragraph.getTextRuns().get(0);
+      List<XSLFTextRun> textRuns = paragraph.getTextRuns();
+
+      /* Making sure that the paragraph has only one text run, we will remove all other text runs
+       * after index 0 (from the first text run) */
+      if (textRuns.size() > 1) {
+        textRuns.subList(1, textRuns.size()).clear();
+      }
+
+      /* Get the remaining text run (at position 0) and set text for it. */
+      XSLFTextRun textRun = textRuns.get(0);
       textRun.setText(text);
     } else {
       log.error("The Table Cell is null. Could not write data");
